@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources: 
+# VPC
+  cftVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/21
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-vpc
+  
+# Internet Gateway
+  cftIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-igw
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref cftVpc
+      InternetGatewayId: !Ref cftIgw
+
+# Subnet (public)  
+  cftPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref cftVpc
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-public-subnet
+  
+  cftPublicRtb:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cftVpc
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-public-rtb
+  
+  cftPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref cftPublicRtb
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref cftIgw
+
+  cftPublicRtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref cftPublicSubnet
+      RouteTableId: !Ref cftPublicRtb  
+
+# Subnet (private)  
+  cftPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref cftVpc
+      CidrBlock: 10.0.2.0/24
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-private-subnet
+  
+  cftPrivateRtb:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cftVpc
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-private-rtb
+  
+  cftPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref cftPrivateRtb
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref cftNatgw
+
+  cftPrivateRtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref cftPrivateSubnet
+      RouteTableId: !Ref cftPrivateRtb  
+
+# NAT Gateway  
+  cftNatgw:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt cftNatgwEip.AllocationId
+      SubnetId: !Ref cftPublicSubnet
+      Tags:
+        - Key: Name
+          Value: cf-tutorial-natgw
+
+  cftNatgwEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc

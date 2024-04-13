@@ -6,8 +6,8 @@ on:
       - master
       - review
     paths:
-      - **.yaml
-      - **.yml
+      - *.yaml
+      - *.yml
 
 permissions:
   id-token: write

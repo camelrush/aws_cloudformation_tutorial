@@ -1,13 +1,11 @@
 name: "pull request, review on chatGPT"
 
 on:
-  push:
-    branches:
-      - master
-      - review
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 permissions:
-  id-token: write
+  pull-requests: write
   contents: read
 
 jobs:

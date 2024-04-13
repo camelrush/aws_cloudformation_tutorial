@@ -6,7 +6,7 @@ Parameters:
     Type: String
     Description: (Required)Mapping to Inbound rule on ec2'security group.
 
-  # Environment
+  # Environment variable
   cftEnv:
     Type: String
     Default: Dev
@@ -103,7 +103,7 @@ Resources:
       SubnetId: !Ref cftPublicSubnet
       RouteTableId: !Ref cftPublicRtb
 
-  # Subnet (private)  
+  # Subnet (private) 
   cftPrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:

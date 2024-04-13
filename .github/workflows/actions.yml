@@ -1,25 +1,23 @@
-name: "pull request, review on chatGPT"
+name: Code Review
+
+permissions:
+  contents: read
+  pull-requests: write
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
-permissions:
-  pull-requests: write
-  contents: read
-
 jobs:
-  review:
-    name: Source Review by ChatGpt
+  test:
+    # if: ${{ contains(github.event.*.labels.*.name, 'gpt review') }} # Optional; to run only when a label is attached
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source.
-        uses: actions/checkout@v4
-      - name: Review on chatGPT 
-        uses: anc95/ChatGPT-CodeReview@main
-        env: 
+      - uses: anc95/ChatGPT-CodeReview@main
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Optional
           LANGUAGE: Japanese
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
           MODEL: gpt-3.5-turbo # https://platform.openai.com/docs/models

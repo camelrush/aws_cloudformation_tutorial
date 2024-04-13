@@ -1,0 +1,33 @@
+name: "pull request, review for chatGPT"
+
+on: [push]
+
+env:
+  AWS_REGION: ap-northeast-1
+  CF_ENVIRONMENT: dev
+  CF_SOURCEIP: 0.0.0.0
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  review:
+    name: deploy for CloudFormation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source.
+        uses: actions/checkout@v4
+      - name: Configure AWS Credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with: 
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
+      - name: deployCloudformation
+        uses: aws-actions/aws-cloudformation-github-deploy@master
+        with:
+          template: cf.yaml
+          no-fail-on-empty-changeset: "1"
+          parameter-overrides: >-
+            cftMyIpAddress=${{ env.CF_SOURCEIP }},
+            cftEnv=${{ env.CF_ENVIRONMENT }}

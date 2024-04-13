@@ -6,7 +6,7 @@ Parameters:
     Type: String
     Description: (Required)Mapping to Inbound rule on ec2'security group.
 
-  # Environment variable
+  # Environment
   cftEnv:
     Type: String
     Default: Dev

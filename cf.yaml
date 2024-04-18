@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
-  # My IP Address(Required)
-  cftMyIpAddress:
+  # My IP Address CIDR(Required)
+  cftMyIpAddressCidr:
     Type: String
     Description: (Required)Mapping to Inbound rule on ec2'security group.
 
@@ -192,8 +192,8 @@ Resources:
         FromPort: 22
         ToPort: 22
         CidrIp: !Sub
-        - ${privateIp}/32
-        - {privateIp: !Ref cftMyIpAddress}
+        - ${MyIpCidr}
+        - {MyIpCidr: !Ref cftMyIpAddressCidr}
       Tags:
       - Key: Name
         Value: !Sub

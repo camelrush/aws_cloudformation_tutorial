@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: ap-northeast-1
   CF_ENVIRONMENT: Dev
-  CF_SOURCEIP: 0.0.0.0
+  CF_SOURCEIP: 0.0.0.0/0
 
 permissions:
   id-token: write
@@ -33,5 +33,5 @@ jobs:
           template: cf.yaml
           no-fail-on-empty-changeset: "1"
           parameter-overrides: >-
-            cftMyIpAddress=${{ env.CF_SOURCEIP }},
+            cftMyIpAddressCidr=${{ env.CF_SOURCEIP }},
             cftEnv=${{ env.CF_ENVIRONMENT }}

@@ -14,7 +14,7 @@ Parameters:
     - Prd
     - Stg
     - Dev
-    Description: Enter Prd, Stg or Dev. Default is Dev.
+    Description: Enter Environment Prd, Stg or Dev. Default is Dev.
 
 Mappings:
   # Environment Mapping

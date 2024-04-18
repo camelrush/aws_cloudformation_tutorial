@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  # My IP Address CIDR(Required)
+  cftMyIpAddressCidr:
+    Type: String
+    Description: (Required)Mapping to Inbound rule on ec2'security group.
+
+  # Environment variable
+  cftEnv:
+    Type: String
+    Default: Dev
+    AllowedValues:
+    - Prd
+    - Stg
+    - Dev
+    Description: Enter Environment Prd, Stg or Dev. Default is Dev.
+
+Mappings:
+  # Environment Mapping
+  cftEnvMap:
+    Prd:
+      Suffix: prd
+      InstanceType: t3.small
+      VpcCidr: 10.2.0.0/21
+      PublicSubnetCidr: 10.2.1.0/24
+      PrivateSubnetCidr: 10.2.2.0/24
+    Stg:
+      Suffix: stg
+      InstanceType: t3.small
+      VpcCidr: 10.1.0.0/21
+      PublicSubnetCidr: 10.1.1.0/24
+      PrivateSubnetCidr: 10.1.2.0/24
+    Dev:
+      Suffix: dev
+      InstanceType: t3.micro
+      VpcCidr: 10.0.0.0/21
+      PublicSubnetCidr: 10.0.1.0/24
+      PrivateSubnetCidr: 10.0.2.0/24
+
+Resources:
+  # VPC
+  cftVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [cftEnvMap, !Ref cftEnv, VpcCidr]
+      EnableDnsSupport: true
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-vpc-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  # Internet Gateway
+  cftIgw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-igw-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix]}
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref cftVpc
+      InternetGatewayId: !Ref cftIgw
+
+  # Subnet (public)  
+  cftPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref cftVpc
+      CidrBlock: !FindInMap [cftEnvMap, !Ref cftEnv, PublicSubnetCidr]
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-public-subnet-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  cftPublicRtb:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cftVpc
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-public-rtb-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  cftPublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref cftPublicRtb
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref cftIgw
+
+  cftPublicRtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref cftPublicSubnet
+      RouteTableId: !Ref cftPublicRtb
+
+  # Subnet (private) 
+  cftPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref cftVpc
+      CidrBlock: !FindInMap [cftEnvMap, !Ref cftEnv, PrivateSubnetCidr]
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-private-subnet-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  cftPrivateRtb:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref cftVpc
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-private-rtb-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  cftPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref cftPrivateRtb
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref cftNatgw
+
+  cftPrivateRtAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref cftPrivateSubnet
+      RouteTableId: !Ref cftPrivateRtb
+
+  # NAT Gateway  
+  cftNatgw:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt cftNatgwEip.AllocationId
+      SubnetId: !Ref cftPublicSubnet
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-natgw-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  cftNatgwEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # EC2(public)
+  cftPublicEc2:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: cf-tutorial-ec2-key
+      DisableApiTermination: false
+      ImageId: ami-020283e959651b381
+      InstanceType: !FindInMap [cftEnvMap, !Ref cftEnv, InstanceType]
+      SubnetId: !Ref cftPublicSubnet
+      Monitoring: false
+      SecurityGroupIds:
+      - !Ref cftPublicEc2Sg
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        # put your script here
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-public-ec2-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  # SecurityGroup(public EC2)
+  cftPublicEc2Sg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub
+      - cf-tutorial-public-ec2-sg-${env}
+      - {env: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix]}
+      GroupDescription: Allow SSH Access.
+      VpcId: !Ref cftVpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Sub
+        - ${MyIpCidr}
+        - {MyIpCidr: !Ref cftMyIpAddressCidr}
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-public-ec2-sg-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  # ElasicIp for public EC2
+  cftPublicEc2Eip:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref cftPublicEc2
+
+  # EC2(private)
+  cftPrivateEc2:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: cf-tutorial-ec2-key
+      DisableApiTermination: false
+      ImageId: ami-020283e959651b381
+      InstanceType: !FindInMap [cftEnvMap, !Ref cftEnv, InstanceType]
+      SubnetId: !Ref cftPrivateSubnet
+      Monitoring: false
+      SecurityGroupIds:
+      - !Ref cftPrivateEc2Sg
+      UserData: !Base64 |
+        #!/bin/bash -ex
+        # put your script here
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-private-ec2-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+  # SecurityGroup(private EC2)
+  cftPrivateEc2Sg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub
+      - cf-tutorial-private-ec2-sg-${env}
+      - {env: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix]}
+      GroupDescription: Allow SSH Access from Public EC2 Only.
+      VpcId: !Ref cftVpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Sub
+        - ${privateIp}/32
+        - {privateIp: !GetAtt cftPublicEc2.PrivateIp}
+      Tags:
+      - Key: Name
+        Value: !Sub
+        - cf-tutorial-private-ec2-sg-${suffix}
+        - {suffix: !FindInMap [cftEnvMap, !Ref cftEnv, Suffix],}
+
+# ======================
+#  Outputs Statement
+# ======================
+# IP Address Allocated to Public EC2
+Outputs:
+  cftPublicEc2Eip:
+    Value: !GetAtt cftPublicEc2Eip.PublicIp
+

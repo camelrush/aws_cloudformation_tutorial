@@ -1,8 +1,9 @@
-name: "pull request, review for chatGPT"
+name: "CloudFormation Deploy on Push Event"
 
 on: 
   push:
     branches: master
+    paths: '**.yaml'
 
 env:
   AWS_REGION: ap-northeast-1
